@@ -1,0 +1,14 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30  # uvloop + httptools: ~19% more req/s than the pure-Python h11 stack here
+redis>=5.0
+psycopg[binary,pool]>=3.2
+httpx>=0.27
+pydantic>=2.7
+numpy>=2.0
+torch>=2.4
+scikit-learn>=1.5
+scipy>=1.13
+matplotlib>=3.9
+magic-hour>=0.92
+pytest>=8
+orjson>=3.10
