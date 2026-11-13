@@ -72,9 +72,17 @@ async def run(url, arm, n, drift_at, retrain_at, conc, seed, window):
                 spec = BY_NAME[m]
                 charged = spec.credits(req.resolution, req.seconds) * TRUE_COST.get(m, 1.0)
                 await c.post("/v1/feedback", json={"decision_id": d["decision_id"], "passed": bool(ok), "credits_charged": charged})
+                shadow_charged = 0.0
+                if d.get("shadow"):  # extra render for learning only; the customer still gets `m`
+                    sm = d["shadow"]["model"]
+                    sok = judge(quality(sm, demand, diff, noise, drift), np.random.default_rng(s))[req.quality]
+                    shadow_charged = BY_NAME[sm].credits(req.resolution, req.seconds) * TRUE_COST.get(sm, 1.0)
+                    await c.post("/v1/feedback", json={"decision_id": d["decision_id"], "passed": bool(sok), "model": sm,
+                                                       "shadow": True, "credits_charged": shadow_charged})
                 prem = premium_default(req.task, req.eligible(), req.resolution, req.seconds)
                 pok = judge(quality(prem.name, demand, diff, noise, drift), np.random.default_rng(s))[req.quality]
-                results[i] = {"i": i, "model": m, "ok": ok, "credits": charged, "explored": d["explored"],
+                results[i] = {"i": i, "model": m, "ok": ok, "credits": charged + shadow_charged, "shadow_credits": shadow_charged,
+                              "explored": d["explored"],
                               "version": d["model_version"], "prem_ok": pok,
                               "prem_credits": prem.credits(req.resolution, req.seconds),
                               "regressed": m == "gpt-image-2", "upgraded": m == "flux-schnell", "repriced": m == "kling-3.0"}
@@ -96,6 +104,7 @@ async def run(url, arm, n, drift_at, retrain_at, conc, seed, window):
                      "prem_pass": float(np.mean([r["prem_ok"] for r in chunk])),
                      "credits_per_req": float(np.mean([r["credits"] for r in chunk])),
                      "prem_credits_per_req": float(np.mean([r["prem_credits"] for r in chunk])),
+                     "shadow_credits_per_req": float(np.mean([r["shadow_credits"] for r in chunk])),
                      "regressed_share": float(np.mean([r["regressed"] for r in chunk])),
                      "upgraded_share": float(np.mean([r["upgraded"] for r in chunk])),
                      "repriced_share": float(np.mean([r["repriced"] for r in chunk])),

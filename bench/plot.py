@@ -50,7 +50,8 @@ def frontier(rep, out):
 
 def drift(runs, out):
     labels = {"static": ("No online learning", MUTED), "bias": ("Online bias correction", S1),
-              "bias_explore_retrain": ("Bias correction + 5% exploration", S2)}
+              "bias_explore_retrain": ("Bias correction + 5% live exploration", S2),
+              "bias_shadow": ("Bias correction + 10% shadow renders", S3)}
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.2), dpi=160, facecolor=SURF)
     for ax in axes:
         style(ax)
@@ -69,7 +70,7 @@ def drift(runs, out):
     axes[0].set_title("Pass rate vs always-premium (points)", color=INK, fontsize=10, loc="left")
     axes[1].set_title("Credits saved vs always-premium (%)", color=INK, fontsize=10, loc="left")
     h, l = axes[0].get_legend_handles_labels()
-    fig.legend(h, l, frameon=False, fontsize=8.5, labelcolor=INK, loc="lower center", ncol=3)
+    fig.legend(h, l, frameon=False, fontsize=8.5, labelcolor=INK, loc="lower center", ncol=4)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     fig.savefig(out, facecolor=SURF)
 

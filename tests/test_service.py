@@ -67,3 +67,19 @@ def test_feedback_is_idempotent_and_moves_bias(client):
 
 def test_unknown_feedback_404(client):
     assert client.post("/v1/feedback", json={"decision_id": str(uuid.uuid4()), "passed": True}).status_code == 404
+
+
+def test_shadow_feedback_is_recorded_separately(client):
+    d = client.post("/v1/route", json=dict(BODY, prompt="a glass chess set, macro shot", quality="premium")).json()
+    cheaper = [a["model"] for a in d["alternatives"] if a["est_credits"] < d["est_credits"]]
+    assert cheaper, "premium-bar request should have cheaper alternatives"
+    a = client.post("/v1/feedback", json={"decision_id": d["decision_id"], "passed": True}).json()
+    b = client.post("/v1/feedback", json={"decision_id": d["decision_id"], "passed": False,
+                                          "model": cheaper[0], "shadow": True}).json()
+    assert a["applied"] and b["applied"]
+
+
+def test_feedback_for_ineligible_model_is_rejected(client):
+    d = client.post("/v1/route", json=dict(BODY, resolution="640px")).json()
+    r = client.post("/v1/feedback", json={"decision_id": d["decision_id"], "passed": True, "model": "nano-banana-pro"})
+    assert r.status_code == 422

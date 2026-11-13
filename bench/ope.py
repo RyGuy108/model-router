@@ -73,7 +73,7 @@ def load_logs():
         truth[t["id"]] = t
     with psycopg.connect(PG) as c:
         rows = c.execute("SELECT d.id::text, d.request, d.chosen, d.propensity, d.scores, f.passed FROM decisions d "
-                         "JOIN feedback f ON f.decision_id = d.id WHERE d.tenant = %s", (TENANT,)).fetchall()
+                         "JOIN feedback f ON f.decision_id = d.id AND NOT f.shadow WHERE d.tenant = %s", (TENANT,)).fetchall()
     return [r for r in rows if r[0] in truth], truth
 
 

@@ -33,11 +33,12 @@ BAR_IX = {"draft": 0, "standard": 1, "premium": 2}
 
 
 def export_feedback(conn) -> list[dict]:
-    q = ("SELECT d.id, d.request, f.model, f.passed, d.propensity FROM feedback f "
-         "JOIN decisions d ON d.id = f.decision_id ORDER BY f.received_at")
+    q = ("SELECT d.id, d.request, f.model, f.passed, CASE WHEN f.shadow THEN d.shadow_propensity ELSE d.propensity END "
+         "FROM feedback f JOIN decisions d ON d.id = f.decision_id ORDER BY f.received_at")
     rows = []
     for did, req, model, passed, prop in conn.execute(q):
-        rows.append({"id": f"fb-{did}", "req": req, "weight": float(min(20.0, 1.0 / max(prop, 1e-6))),
+        prop = prop or 1.0
+        rows.append({"id": f"fb-{did}-{model}", "req": req, "weight": float(min(20.0, 1.0 / max(prop, 1e-6))),
                      "outcomes": {model: [{req["quality"]: int(passed)}]}})
     return rows
 

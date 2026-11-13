@@ -23,14 +23,31 @@ CREATE TABLE IF NOT EXISTS decisions (
     propensity    real        NOT NULL,   -- P(policy picks `chosen` | request); < 1 when exploring
     explored      boolean     NOT NULL,
     reason        text        NOT NULL,
-    scores        jsonb       NOT NULL    -- {model: p_pass} for every eligible model
+    scores        jsonb       NOT NULL,   -- {model: {p, c}}: P(pass) and price for every eligible model
+    shadow_model  text,                   -- extra render requested for learning, never shown to the customer
+    shadow_propensity real
 );
 CREATE INDEX IF NOT EXISTS decisions_created ON decisions (created_at);
 
+-- one row per rendered model: the routed render, plus any shadow render for the same decision
 CREATE TABLE IF NOT EXISTS feedback (
-    decision_id     uuid PRIMARY KEY,
-    received_at     timestamptz NOT NULL DEFAULT now(),
+    decision_id     uuid        NOT NULL,
     model           text        NOT NULL,
+    received_at     timestamptz NOT NULL DEFAULT now(),
     passed          boolean     NOT NULL,
-    credits_charged real
+    credits_charged real,
+    shadow          boolean     NOT NULL DEFAULT false,
+    PRIMARY KEY (decision_id, model)
 );
+
+-- migrations for databases created before shadow exploration
+ALTER TABLE decisions ADD COLUMN IF NOT EXISTS shadow_model text;
+ALTER TABLE decisions ADD COLUMN IF NOT EXISTS shadow_propensity real;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS shadow boolean NOT NULL DEFAULT false;
+DO $$ BEGIN
+    IF (SELECT count(*) FROM information_schema.key_column_usage
+        WHERE table_name = 'feedback' AND constraint_name = 'feedback_pkey') = 1 THEN
+        ALTER TABLE feedback DROP CONSTRAINT feedback_pkey;
+        ALTER TABLE feedback ADD PRIMARY KEY (decision_id, model);
+    END IF;
+END $$;

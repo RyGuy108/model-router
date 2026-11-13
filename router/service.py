@@ -43,6 +43,9 @@ CFG = {
     "tau_file": os.environ.get("ROUTER_TAU_FILE", "models/tau.json"),
     "epsilon": float(os.environ.get("ROUTER_EPSILON", "0")),
     "explore": os.environ.get("ROUTER_EXPLORE", "cheaper"),  # cheaper | uniform
+    # shadow exploration: ask the client to also render a cheaper model on this fraction of requests.
+    # The customer always gets the router's pick; the shadow render only feeds the router's learning.
+    "shadow_rate": float(os.environ.get("ROUTER_SHADOW_RATE", "0")),
     "online_bias": os.environ.get("ROUTER_ONLINE_BIAS", "1") == "1",
     "bias_lr": float(os.environ.get("ROUTER_BIAS_LR", "0.02")),
     "cost_alpha": float(os.environ.get("ROUTER_COST_ALPHA", "0.1")),
@@ -73,7 +76,8 @@ class FeedbackIn(BaseModel):
     decision_id: uuid.UUID
     passed: bool
     credits_charged: float | None = None
-    model: str | None = None  # defaults to the routed model
+    model: str | None = None  # defaults to the routed model; set it to report a shadow render
+    shadow: bool = False
 
 
 class State:
@@ -159,7 +163,8 @@ async def refresh_tables():
 async def decision_writer():
     """Batch decision rows into one multi-row INSERT per ~20 ms instead of one transaction per request."""
     sql = ("INSERT INTO decisions (id, tenant, model_version, request, chosen, p_pass, est_credits, propensity, "
-           "explored, reason, scores) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING")
+           "explored, reason, scores, shadow_model, shadow_propensity) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+           "ON CONFLICT DO NOTHING")
     while True:
         rows = [await S.log_q.get()]
         await asyncio.sleep(0.02)
@@ -181,7 +186,9 @@ async def lifespan(app: FastAPI):
     S.pg = AsyncConnectionPool(CFG["pg"], min_size=2, max_size=8, open=False)
     await S.pg.open()
     async with S.pg.connection() as c:
-        await c.execute(open(os.path.join(os.path.dirname(__file__), "schema.sql")).read())
+        async with c.transaction():  # workers start together; serialise the DDL
+            await c.execute("SELECT pg_advisory_xact_lock(7231)")
+            await c.execute(open(os.path.join(os.path.dirname(__file__), "schema.sql")).read())
     S.r = aioredis.from_url(CFG["redis"])
     net, version, tau = await load_active_model()
     S.tau = tau
@@ -260,21 +267,30 @@ async def route(body: RouteIn) -> dict:
                 if m.name != c.model:
                     chosen = type(c)(m.name, p, cr, "explore")
                     explored, propensity = True, eps / k
+    shadow, shadow_prop = None, None
+    if CFG["shadow_rate"] > 0 and not explored:
+        pool = [x for x in cands if x[2] < chosen.credits]
+        if pool and random.random() < CFG["shadow_rate"]:
+            m, p, cr = random.choice(pool)
+            shadow = {"model": m.name, "p_pass": round(p, 4), "est_credits": round(cr, 2)}
+            shadow_prop = CFG["shadow_rate"] / len(pool)
     did = uuid.uuid4()
     scores = {x[0].name: {"p": round(x[1], 5), "c": round(x[2], 3)} for x in cands}
     out = {
         "decision_id": str(did), "model": chosen.model, "p_pass": round(chosen.p_pass, 4),
         "est_credits": round(chosen.credits, 2), "reason": chosen.reason, "explored": explored,
         "escalate_to": escalate_to if not explored else prem.name if body.mode == "cascade" else None,
-        "model_version": version, "cache_hit": hit,
+        "model_version": version, "cache_hit": hit, "shadow": shadow,
         "alternatives": sorted(({"model": x[0].name, "p_pass": round(x[1], 4), "est_credits": round(x[2], 2)}
                                 for x in cands), key=lambda a: a["est_credits"]),
     }
     # remember what we predicted so /feedback can update online stats without touching Postgres
-    await S.r.set(f"{NS}:dec:{did}", json.dumps([chosen.model, chosen.p_pass, body.resolution, body.seconds]), ex=86400 * 3)
+    await S.r.set(f"{NS}:dec:{did}", json.dumps({"m": chosen.model, "p": {k: v["p"] for k, v in scores.items()},
+                                                 "res": body.resolution, "s": body.seconds}), ex=86400 * 3)
     if CFG["log_decisions"]:
         S.log_q.put_nowait((did, body.tenant, version, json.dumps(body.model_dump()), chosen.model, chosen.p_pass,
-                            chosen.credits, propensity, explored, chosen.reason, json.dumps(scores)))
+                            chosen.credits, propensity, explored, chosen.reason, json.dumps(scores),
+                            shadow and shadow["model"], shadow_prop))
     S.counters["route"] += 1
     S.counters["cache_hit"] += hit
     S.counters["explore"] += explored
@@ -295,11 +311,15 @@ async def feedback(fb: FeedbackIn):
     raw = await S.r.get(f"{NS}:dec:{fb.decision_id}")
     if raw is None:
         raise HTTPException(404, "unknown or expired decision_id")
-    model, p, res, secs = json.loads(raw)
-    model = fb.model or model
+    dec = json.loads(raw)
+    model = fb.model or dec["m"]
+    if model not in dec["p"]:
+        raise HTTPException(422, f"{model} was not eligible for this decision")
+    p, res, secs = dec["p"][model], dec["res"], dec["s"]
     async with S.pg.connection() as c:
-        cur = await c.execute("INSERT INTO feedback (decision_id, model, passed, credits_charged) VALUES (%s,%s,%s,%s) "
-                              "ON CONFLICT DO NOTHING", (fb.decision_id, model, fb.passed, fb.credits_charged))
+        cur = await c.execute("INSERT INTO feedback (decision_id, model, passed, credits_charged, shadow) "
+                              "VALUES (%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING",
+                              (fb.decision_id, model, fb.passed, fb.credits_charged, fb.shadow))
         first = cur.rowcount == 1
     if first:  # idempotent: a retried feedback call does not double-update online state
         y = 1.0 if fb.passed else 0.0
