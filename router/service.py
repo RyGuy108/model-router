@@ -42,6 +42,7 @@ CFG = {
     "model_file": os.environ.get("ROUTER_MODEL_FILE", "models/passnet.pt"),
     "tau_file": os.environ.get("ROUTER_TAU_FILE", "models/tau.json"),
     "epsilon": float(os.environ.get("ROUTER_EPSILON", "0")),
+    "explore": os.environ.get("ROUTER_EXPLORE", "cheaper"),  # cheaper | uniform
     "online_bias": os.environ.get("ROUTER_ONLINE_BIAS", "1") == "1",
     "bias_lr": float(os.environ.get("ROUTER_BIAS_LR", "0.02")),
     "cost_alpha": float(os.environ.get("ROUTER_COST_ALPHA", "0.1")),
@@ -246,15 +247,21 @@ async def route(body: RouteIn) -> dict:
     chosen, explored, propensity = c, False, 1.0
     eps = CFG["epsilon"]
     if eps > 0:
-        cheaper = [x for x in cands if x[2] < c.credits]
-        if cheaper:
-            propensity = 1 - eps
+        # cheaper: explore only models cheaper than the pick (where savings hide).
+        # uniform: explore any eligible model, which gives every model a logged propensity > 0,
+        # so any future policy can be evaluated off-policy from these logs (bench/ope.py).
+        pool = [x for x in cands if x[2] < c.credits] if CFG["explore"] == "cheaper" else cands
+        if pool:
+            k = len(pool)
+            in_pool = any(x[0].name == c.model for x in pool)
+            propensity = (1 - eps) + (eps / k if in_pool else 0.0)
             if random.random() < eps:
-                m, p, cr = random.choice(cheaper)
-                chosen = type(c)(m.name, p, cr, "explore")
-                explored, propensity = True, eps / len(cheaper)
+                m, p, cr = random.choice(pool)
+                if m.name != c.model:
+                    chosen = type(c)(m.name, p, cr, "explore")
+                    explored, propensity = True, eps / k
     did = uuid.uuid4()
-    scores = {x[0].name: round(x[1], 4) for x in cands}
+    scores = {x[0].name: {"p": round(x[1], 5), "c": round(x[2], 3)} for x in cands}
     out = {
         "decision_id": str(did), "model": chosen.model, "p_pass": round(chosen.p_pass, 4),
         "est_credits": round(chosen.credits, 2), "reason": chosen.reason, "explored": explored,
