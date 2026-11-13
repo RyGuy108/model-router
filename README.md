@@ -129,7 +129,7 @@ keep-alive client.
 Six image requests (640px) went through `POST /v1/generate`, which routed each one and submitted it to
 the real API. The router picked flux-schnell (2), krea-2 and gpt-image-2 (3) and was charged **170
 credits**, vs **450** for the premium default at 640px (seedream-v5-pro, since nano-banana-pro doesn't
-render 640px). I reviewed all six renders by eye and all six met their bar, including the two with
+render 640px). On a visual review all six met their bar, including the two with
 rendered text ("GRAND OPENING", a four-line chalkboard menu). Six renders prove the integration works end
 to end; they are not a quality benchmark. Log: `results/real/generate_log.json`, images:
 `results/real/contact_sheet.jpg`.
