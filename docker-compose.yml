@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16
+    environment: {POSTGRES_PASSWORD: postgres, POSTGRES_DB: router}
+    healthcheck: {test: ["CMD", "pg_isready", "-U", "postgres"], interval: 2s, retries: 30}
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 2s, retries: 30}
+  router:
+    build: .
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    environment:
+      ROUTER_PG: postgresql://postgres:postgres@postgres/router
+      ROUTER_REDIS: redis://redis:6379/0
+      ROUTER_EPSILON: "0.02"
+      MAGIC_HOUR_API_KEY: ${MAGIC_HOUR_API_KEY:-}
+    ports: ["8000:8000"]
+  # nightly: fine-tune on feedback, gate on fresh holdout, hot-swap via Redis pubsub
+  retrain:
+    build: .
+    profiles: ["jobs"]
+    depends_on: [postgres, redis]
+    environment:
+      ROUTER_PG: postgresql://postgres:postgres@postgres/router
+      ROUTER_REDIS: redis://redis:6379/0
+    command: ["sh", "-c", "python -m sim.world --n 40000 && python -m router.retrain"]
+volumes:
+  pgdata:
