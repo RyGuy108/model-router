@@ -1,0 +1,387 @@
+[
+ {
+  "req": {
+   "task": "image",
+   "prompt": "a mountain lake at dawn, watercolor illustration",
+   "resolution": "640px",
+   "quality": "standard",
+   "aspect_ratio": "16:9"
+  },
+  "gen": {
+   "decision_id": "8b6fbf13-e86f-4f93-9b48-0cc572831343",
+   "model": "flux-schnell",
+   "p_pass": 0.9755,
+   "est_credits": 5.0,
+   "reason": "lagrangian",
+   "explored": false,
+   "escalate_to": null,
+   "model_version": "20261113-194128",
+   "cache_hit": true,
+   "alternatives": [
+    {
+     "model": "z-image-turbo",
+     "p_pass": 0.9345,
+     "est_credits": 5.0
+    },
+    {
+     "model": "flux-schnell",
+     "p_pass": 0.9755,
+     "est_credits": 5.0
+    },
+    {
+     "model": "qwen-image-2.1",
+     "p_pass": 0.9524,
+     "est_credits": 10.0
+    },
+    {
+     "model": "krea-2",
+     "p_pass": 0.9442,
+     "est_credits": 10.0
+    },
+    {
+     "model": "seedream-v4",
+     "p_pass": 0.976,
+     "est_credits": 40.0
+    },
+    {
+     "model": "gpt-image-2",
+     "p_pass": 0.8807,
+     "est_credits": 50.0
+    },
+    {
+     "model": "seedream-v5-pro",
+     "p_pass": 0.9822,
+     "est_credits": 75.0
+    }
+   ],
+   "project_id": "cmwffefyg008zgj01t5g5c8cp",
+   "credits_charged": 5
+  },
+  "status": "complete",
+  "credits_charged": 5,
+  "file": "results/real/0_flux-schnell.png",
+  "judged_pass": true,
+  "judge": "manual visual review"
+ },
+ {
+  "req": {
+   "task": "image",
+   "prompt": "a golden retriever puppy, photorealistic, 85mm lens",
+   "resolution": "640px",
+   "quality": "standard",
+   "aspect_ratio": "1:1"
+  },
+  "gen": {
+   "decision_id": "974d5263-442f-473e-b007-4893e8aab963",
+   "model": "krea-2",
+   "p_pass": 0.9802,
+   "est_credits": 10.0,
+   "reason": "lagrangian",
+   "explored": false,
+   "escalate_to": null,
+   "model_version": "20261113-194128",
+   "cache_hit": true,
+   "alternatives": [
+    {
+     "model": "z-image-turbo",
+     "p_pass": 0.9647,
+     "est_credits": 5.0
+    },
+    {
+     "model": "flux-schnell",
+     "p_pass": 0.9493,
+     "est_credits": 5.0
+    },
+    {
+     "model": "qwen-image-2.1",
+     "p_pass": 0.9101,
+     "est_credits": 10.0
+    },
+    {
+     "model": "krea-2",
+     "p_pass": 0.9802,
+     "est_credits": 10.0
+    },
+    {
+     "model": "seedream-v4",
+     "p_pass": 0.9817,
+     "est_credits": 40.0
+    },
+    {
+     "model": "gpt-image-2",
+     "p_pass": 0.9792,
+     "est_credits": 50.0
+    },
+    {
+     "model": "seedream-v5-pro",
+     "p_pass": 0.9903,
+     "est_credits": 75.0
+    }
+   ],
+   "project_id": "cmwffegh500koiq012n840px2",
+   "credits_charged": 10
+  },
+  "status": "complete",
+  "credits_charged": 10,
+  "file": "results/real/1_krea-2.png",
+  "judged_pass": true,
+  "judge": "manual visual review"
+ },
+ {
+  "req": {
+   "task": "image",
+   "prompt": "a cabin in the woods, pixel art",
+   "resolution": "640px",
+   "quality": "draft",
+   "aspect_ratio": "16:9"
+  },
+  "gen": {
+   "decision_id": "05a75a00-71e6-430a-a9b0-784a571f187d",
+   "model": "flux-schnell",
+   "p_pass": 0.9926,
+   "est_credits": 5.0,
+   "reason": "lagrangian",
+   "explored": false,
+   "escalate_to": null,
+   "model_version": "20261113-194128",
+   "cache_hit": true,
+   "alternatives": [
+    {
+     "model": "z-image-turbo",
+     "p_pass": 0.9916,
+     "est_credits": 5.0
+    },
+    {
+     "model": "flux-schnell",
+     "p_pass": 0.9926,
+     "est_credits": 5.0
+    },
+    {
+     "model": "qwen-image-2.1",
+     "p_pass": 0.9894,
+     "est_credits": 10.0
+    },
+    {
+     "model": "krea-2",
+     "p_pass": 0.9913,
+     "est_credits": 10.0
+    },
+    {
+     "model": "seedream-v4",
+     "p_pass": 0.9932,
+     "est_credits": 40.0
+    },
+    {
+     "model": "gpt-image-2",
+     "p_pass": 0.9926,
+     "est_credits": 50.0
+    },
+    {
+     "model": "seedream-v5-pro",
+     "p_pass": 0.993,
+     "est_credits": 75.0
+    }
+   ],
+   "project_id": "cmwffeh6j00mdjt01utytiz0x",
+   "credits_charged": 5
+  },
+  "status": "complete",
+  "credits_charged": 5,
+  "file": "results/real/2_flux-schnell.png",
+  "judged_pass": true,
+  "judge": "manual visual review"
+ },
+ {
+  "req": {
+   "task": "image",
+   "prompt": "a bowl of noodle soup, next to a storefront banner saying \"Grand Opening\", flat vector illustration",
+   "resolution": "640px",
+   "quality": "standard",
+   "aspect_ratio": "1:1"
+  },
+  "gen": {
+   "decision_id": "a9573908-a299-4f40-afb4-fa7780c1a2a4",
+   "model": "gpt-image-2",
+   "p_pass": 0.9667,
+   "est_credits": 50.0,
+   "reason": "lagrangian",
+   "explored": false,
+   "escalate_to": null,
+   "model_version": "20261113-194128",
+   "cache_hit": true,
+   "alternatives": [
+    {
+     "model": "z-image-turbo",
+     "p_pass": 0.0424,
+     "est_credits": 5.0
+    },
+    {
+     "model": "flux-schnell",
+     "p_pass": 0.2016,
+     "est_credits": 5.0
+    },
+    {
+     "model": "qwen-image-2.1",
+     "p_pass": 0.8908,
+     "est_credits": 10.0
+    },
+    {
+     "model": "krea-2",
+     "p_pass": 0.1923,
+     "est_credits": 10.0
+    },
+    {
+     "model": "seedream-v4",
+     "p_pass": 0.87,
+     "est_credits": 40.0
+    },
+    {
+     "model": "gpt-image-2",
+     "p_pass": 0.9667,
+     "est_credits": 50.0
+    },
+    {
+     "model": "seedream-v5-pro",
+     "p_pass": 0.9558,
+     "est_credits": 75.0
+    }
+   ],
+   "project_id": "cmwffehry00krjm0113uzwwq0",
+   "credits_charged": 50
+  },
+  "status": "complete",
+  "credits_charged": 50,
+  "file": "results/real/3_gpt-image-2.png",
+  "judged_pass": true,
+  "judge": "manual visual review"
+ },
+ {
+  "req": {
+   "task": "image",
+   "prompt": "two chefs high-fiving, with a chalkboard menu listing \"Espresso 3 Latte 4 Mocha 5 Tea 2\", photorealistic, 85mm lens",
+   "resolution": "640px",
+   "quality": "premium",
+   "aspect_ratio": "16:9",
+   "max_credits": 60
+  },
+  "gen": {
+   "decision_id": "16d3f7ec-6f1f-4893-8189-370834d33737",
+   "model": "gpt-image-2",
+   "p_pass": 0.7656,
+   "est_credits": 50.0,
+   "reason": "lagrangian",
+   "explored": false,
+   "escalate_to": null,
+   "model_version": "20261113-194128",
+   "cache_hit": true,
+   "alternatives": [
+    {
+     "model": "z-image-turbo",
+     "p_pass": 0.0,
+     "est_credits": 5.0
+    },
+    {
+     "model": "flux-schnell",
+     "p_pass": 0.0,
+     "est_credits": 5.0
+    },
+    {
+     "model": "qwen-image-2.1",
+     "p_pass": 0.0968,
+     "est_credits": 10.0
+    },
+    {
+     "model": "krea-2",
+     "p_pass": 0.0,
+     "est_credits": 10.0
+    },
+    {
+     "model": "seedream-v4",
+     "p_pass": 0.0092,
+     "est_credits": 40.0
+    },
+    {
+     "model": "gpt-image-2",
+     "p_pass": 0.7656,
+     "est_credits": 50.0
+    },
+    {
+     "model": "seedream-v5-pro",
+     "p_pass": 0.2143,
+     "est_credits": 75.0
+    }
+   ],
+   "project_id": "cmwffeib400n5io01bvxqylxw",
+   "credits_charged": 50
+  },
+  "status": "complete",
+  "credits_charged": 50,
+  "file": "results/real/4_gpt-image-2.png",
+  "judged_pass": true,
+  "judge": "manual visual review"
+ },
+ {
+  "req": {
+   "task": "image",
+   "prompt": "an astronaut cat, anime style",
+   "resolution": "640px",
+   "quality": "standard",
+   "aspect_ratio": "9:16"
+  },
+  "gen": {
+   "decision_id": "0417cc7a-2559-441f-ab0c-3f1c2aa47073",
+   "model": "gpt-image-2",
+   "p_pass": 0.9666,
+   "est_credits": 50.0,
+   "reason": "lagrangian",
+   "explored": false,
+   "escalate_to": null,
+   "model_version": "20261113-194128",
+   "cache_hit": true,
+   "alternatives": [
+    {
+     "model": "z-image-turbo",
+     "p_pass": 0.8121,
+     "est_credits": 5.0
+    },
+    {
+     "model": "flux-schnell",
+     "p_pass": 0.8885,
+     "est_credits": 5.0
+    },
+    {
+     "model": "qwen-image-2.1",
+     "p_pass": 0.8685,
+     "est_credits": 10.0
+    },
+    {
+     "model": "krea-2",
+     "p_pass": 0.8844,
+     "est_credits": 10.0
+    },
+    {
+     "model": "seedream-v4",
+     "p_pass": 0.9379,
+     "est_credits": 40.0
+    },
+    {
+     "model": "gpt-image-2",
+     "p_pass": 0.9666,
+     "est_credits": 50.0
+    },
+    {
+     "model": "seedream-v5-pro",
+     "p_pass": 0.9531,
+     "est_credits": 75.0
+    }
+   ],
+   "project_id": "cmwffeisk00drk101wd1uffla",
+   "credits_charged": 50
+  },
+  "status": "complete",
+  "credits_charged": 50,
+  "file": "results/real/5_gpt-image-2.png",
+  "judged_pass": true,
+  "judge": "manual visual review"
+ }
+]
