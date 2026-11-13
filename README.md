@@ -89,19 +89,54 @@ better version, and kling-3.0 turns out to bill 0.6x the catalog price.
 |---|---|---|---|
 | No online learning | −4.9 pts | 19.9% | 15.3% (unchanged) |
 | **Online bias correction** | **−0.9 pts** | **21.4%** | **1.7%** |
-| Bias correction + 5% exploration | −2.2 pts | 24.3% | 1.9% |
+| Bias correction + 5% live exploration | −2.2 pts | 24.3% | 1.9% |
+| Bias correction + 10% shadow renders | −0.8 pts | 20.2% (after paying for shadows) | 1.4% |
 
 - The online correction is one SGD step per feedback on a per-model logit offset, kept in Redis and
   shared by all workers. Traffic to the regressed model fell from 15% to 2% within about 4,000
   requests and stayed under 1% after that. The live cost EMA picked up kling-3.0's lower real price,
   but that barely changed routing (its share went from 7.0% to 7.4%).
-- Exploration found the improved cheap model (its share grew from 2% to 8%) and saved the most, but
-  sending 5% of customer traffic to cheaper models cost about 1.3 points of quality. In production
-  I'd run exploration on shadow renders paid for out of the savings, not on customer requests.
+- Live exploration found the improved cheap model (its share grew from 2% to 8%) and saved the most,
+  but sending 5% of customer traffic to cheaper models cost about 1.3 points of quality.
+- **Shadow exploration** fixes that. On 10% of requests the router also names a cheaper model for the
+  client to render on the side (`"shadow"` in the response); the customer always gets the router's pick,
+  and the shadow outcome goes back through `/v1/feedback` with `shadow: true`. Quality matched bias
+  correction alone, and the improved model reached 16% of traffic (vs 8% with live exploration). The
+  catch is cost: shadow renders added 17.5 credits per request (about 1.5% of the premium spend), and
+  in this run the upgrade had not yet paid that back. A lower shadow rate, or shadowing only
+  image requests where renders are cheap, is the obvious knob.
 - The nightly retrain ran at request 12,000 and **the gate rejected it**: the fine-tuned candidate
   scored a worse holdout log loss (0.152) than the live model with its online bias (0.148). That's the
   gate doing its job; with 8k feedback rows labelling one model each, a per-model offset already
   captures most of what changed.
+
+### Evaluating a new policy from logs, before shipping it (`bench/ope.py`)
+
+Every decision is logged with each eligible model's P(pass), its price and the propensity of the model
+actually chosen. With uniform exploration (`ROUTER_EXPLORE=uniform`, ε = 10%), any candidate policy can
+be scored from those logs alone. Its credits are exact (prices are logged); only its pass rate needs an
+estimator. I logged 20,000 requests through the live service and compared four estimators against what
+the simulator says each policy would really have scored on the same requests:
+
+| Candidate policy | Credits / req | True pass | IPS | SNIPS | Direct (model's own P) | Doubly robust |
+|---|---|---|---|---|---|---|
+| Always premium | 1,133 | 94.4% | 95.0% | 94.0% | 94.3% | 94.4% |
+| Always cheapest | 138 | 55.0% | 50.8% | 51.3% | 57.1%\* | 52.7% |
+| Threshold τ = 0.95 | 709 | 93.7% | 95.5% | 93.6% | 93.9%\* | 93.5% |
+| Threshold τ = 0.99 | 1,004 | 95.0% | 91.7% | 95.3% | 94.9% | 95.4%\* |
+| Lagrangian, κ × 0.25 | 672 | 90.8% | 90.8% | 92.5% | 91.7%\* | 92.3% |
+| Lagrangian, κ × 0.5 | 798 | 92.8% | 91.5% | 93.5% | 93.3%\* | 93.7% |
+| Lagrangian, κ × 2 | 992 | 94.9% | 94.4% | 95.2% | 94.8% | 95.2% |
+| Lagrangian, κ × 4 | 1,045 | 95.0% | 94.7% | 95.4% | 94.9% | 95.3% |
+
+\* the estimate's 95% bootstrap interval misses the true value.
+
+Across these 8 policies: SNIPS is off by 0.9 points on average and its interval always covers the
+truth; doubly robust is off by 0.7 and covers 7 of 8; the direct method is the most accurate (0.5) but
+its intervals miss half the time, because it trusts the router's own probabilities and only looks
+precise. Plain IPS is unbiased but noisy (1.5). So: rank candidates with DR, and report SNIPS intervals
+when deciding. Exploring 10% of live traffic uniformly cost 2.2 points of quality while logging (92.2%
+vs 94.4%), which is another reason to collect these logs from shadow renders.
 
 ### Service performance (`bench/load.py`)
 
@@ -142,7 +177,7 @@ to end; they are not a quality benchmark. Log: `results/real/generate_log.json`,
                                 │ 2. miss → PassNet forward (0.1 ms)  ──▶ (14 models × 3 bars) logits
                                 │ 3. + per-model online bias, × live cost scale (snapshotted from Redis 1/s)
                                 │ 4. policy: Lagrangian / threshold / cascade, max_credits, allowed_models
-                                │ 5. ε-exploration among cheaper models, propensity logged
+                                │ 5. ε-exploration (cheaper or uniform) or a shadow model, propensity logged
                                 └─▶ async batched INSERT into Postgres `decisions`
  client ── POST /v1/feedback ─▶ Postgres `feedback` (idempotent per decision)
                                 └─▶ Redis: bias += lr·(y − p); cost EMA (atomic Lua); calibration counters
@@ -212,6 +247,7 @@ curl -s localhost:8000/v1/route -H 'content-type: application/json' -d '{
 python -m bench.load --procs 1 --conc 64          # load test
 python -m bench.drift --arm bias                  # drift replay through the live service
 python -m router.retrain                          # fine-tune on feedback, gate, hot-swap
+python -m bench.ope collect && python -m bench.ope evaluate   # off-policy evaluation (serve with ROUTER_EXPLORE=uniform)
 pytest -q                                         # unit + integration tests (need Postgres/Redis)
 ```
 
@@ -224,8 +260,8 @@ was run natively against Postgres 16 and Redis 7.
   model and labelled by people plus a vision-model judge. The trainer already reads that row format, and
   production feedback uses the same path.
 - Measure the runtime judge's real agreement with human labels, since the cascade's savings depend on it.
-- Use the logged propensities for off-policy evaluation (IPS / doubly robust) of new policies before
-  shipping them.
+- Pick the shadow rate per task from its expected payback (cheap image shadows, rare video shadows).
+- Per-tenant quality targets and credit budgets, enforced in Redis.
 
 ## Resume bullet
 
@@ -233,4 +269,5 @@ was run natively against Postgres 16 and Redis 7.
 > Redis). A calibrated multi-model pass-probability network plus a Lagrangian routing policy cut credits
 > 18% at equal quality on 36k held-out requests (59% with judge-gated escalation), vs 2.6% for
 > hand-built rules. Online feedback correction recovered from a silent model regression within ~4k
-> requests (−4.9 → −0.9 pts vs premium); the service routes in 1.35 ms p50 and 2.5k req/s on 3 workers.
+> requests (−4.9 → −0.9 pts vs premium), and doubly robust off-policy evaluation scores new policies
+> from decision logs to within 0.7 pts. The service routes in 1.35 ms p50 and 2.5k req/s on 3 workers.
